@@ -1,0 +1,29 @@
+{
+  "name": "eshop-be",
+  "version": "1.0.0",
+  "description": "back-end for eshop project",
+  "private": true,
+  "scripts": {
+    "start": "nodemon ./bin/www"
+  },
+  "keywords": [
+    "express",
+    "mysqli",
+    "angular"
+  ],
+  "author": "Gedas",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "cookie-parser": "^1.4.5",
+    "cors": "^2.8.5",
+    "debug": "^4.3.2",
+    "express": "^4.17.1",
+    "express-validator": "^6.13.0",
+    "jsonwebtoken": "^8.5.1",
+    "morgan": "^1.10.0",
+    "mysqli": "^3.1.4",
+    "swagger-jsdoc": "^6.1.0",
+    "swagger-ui-express": "^4.1.6"
+  }
+}
