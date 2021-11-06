@@ -39,8 +39,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Import Routes
 const productsRouter = require('./routes/products');
+const ordersRouter = require('./routes/orders');
 
 app.use('/api/products', productsRouter);
+app.use('/api/orders', ordersRouter);
+
 
 module.exports = app;
 
