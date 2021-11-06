@@ -13,7 +13,7 @@ router.get('/', function (req, res) {       // Sending Page Query Parameter is m
         endValue = page * limit;                 // 10, 20, 30, 40
     } else {
         startValue = 0;
-        endValue = 10;
+        endValue = limit;
     }
     database.table('products as p')
         .join([
@@ -22,16 +22,17 @@ router.get('/', function (req, res) {       // Sending Page Query Parameter is m
                 on: `c.id = p.cat_id`
             }
         ])
-        .withFields(['c.title as category',
+        .withFields([
+            'p.id',
+            'c.title as category',
             'p.title as name',
             'p.price',
             'p.quantity',
             'p.description',
             'p.image',
-            'p.id'
         ])
         .slice(startValue, endValue)
-        .sort({id: .1})
+        .sort({id: 1})
         .getAll()
         .then(prods => {
             if (prods.length > 0) {
@@ -45,5 +46,39 @@ router.get('/', function (req, res) {       // Sending Page Query Parameter is m
         })
         .catch(err => console.log(err));
 });
+
+// GET ONE PRODUCT
+router.get('/:product_Id', (req, res) => {
+    let productId = req.params.product_Id;
+    database.table('products as p')
+        .join([
+            {
+                table: "categories as c",
+                on: `c.id = p.cat_id`
+            }
+        ])
+        .withFields([
+            'p.id',
+            'c.title as category',
+            'p.title as name',
+            'p.price',
+            'p.quantity',
+            'p.description',
+            'p.image',
+            'p.images'
+        ])
+        .filter({'p.id': productId})
+        .get()
+        .then(prod => {
+            if (prod) {
+                res.status(200).json(prod);
+            } else {
+                res.json({message: `No product with id ${productId} found`});
+            }
+        })
+        .catch(err => console.log(err));
+});
+
+
 
 module.exports = router;
