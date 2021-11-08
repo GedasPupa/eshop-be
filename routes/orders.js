@@ -3,18 +3,7 @@ const router = express.Router();
 const {database} = require('../config/helpers');
 
 // GET ALL ORDERS
-router.get('/', function (req, res) {       // Sending Page Query Parameter is mandatory http://localhost:3636/api/products?page=1
-    // const page = (req.query.page !== undefined && req.query.page !== 0) ? req.query.page : 1;
-    // const limit = (req.query.limit !== undefined && req.query.limit !== 0) ? req.query.limit : 10;   // set limit of items per page
-    // let startValue;
-    // let endValue;
-    // if (page > 0) {
-    //     startValue = (page * limit) - limit;     // 0, 10, 20, 30
-    //     endValue = page * limit;                 // 10, 20, 30, 40
-    // } else {
-    //     startValue = 0;
-    //     endValue = limit ? limit : 10;
-    // }
+router.get('/', function (req, res) {
     database.table('orders as o')
         .join([
             {
@@ -37,7 +26,6 @@ router.get('/', function (req, res) {       // Sending Page Query Parameter is m
             'p.price',
             'u.username'
         ])
-        // .slice(startValue, endValue)
         .sort({'o.id': 1})
         .getAll()
         .then(orders => {
@@ -88,28 +76,39 @@ router.get('/:order_id', (req, res) => {
 });
 
 // PLACE A NEW ORDER
-router.post('/new', (req, res) => {
+router.post('/new', async (req, res) => {
     let {id: userId, products} = req.body;
+
+    // product.id check, products.quantity-products.incart check:
+    const purchasedProducts = [];
+    const notPurchased = [];
+    products.forEach(async p => {
+        let data = await database.table('products').filter({id: p.id}).withFields(['quantity']).get();
+        if (data && data.quantity >= p.incart && p.incart !== null && p.incart > 0 && !isNaN(p.incart)) {
+            purchasedProducts.push({p});
+        } else {
+            notPurchased.push({p});
+        }
+    });
+
+    // userId check // placing the order
     if (userId !== null && userId > 0 && !isNaN(userId)) {
         database.table('orders')
         .insert({
             user_id: userId,
         })
         .then(newOrder => {
-            console.log(newOrder.affectedRows);
-            console.log(newOrder.insertId);
-            if (newOrder.insertId > 0) {
+            if (newOrder.affectedRows > 0) {
                 products.forEach(async p => {
                     let data = await database.table('products').filter({id: p.id}).withFields(['quantity']).get();
                     let inCart = p.incart;
 
                     // Deduct the number of pieces ordered from quantity column in DB
-                    if (data.quantity >= inCart) {
+                    if (data && data.quantity >= inCart) {
                         data.quantity -= inCart;                              
                     } else {
-                        console.log('Not enough products for this order');
-                        // res.json({message: 'Not enough products for this order', success: false});
-                        // return;
+                        console.log(`Not enough products for product with id:`, +p.id);
+                        return;
                     }
 
                     // INSERT to orders_details with respect to newly generated order_id
@@ -129,26 +128,43 @@ router.post('/new', (req, res) => {
                         .then(successNum => {})
                         .catch(err => console.log(err));
                     })
-                    .catch(err => console.log(err));              
+                    .catch(err => console.log(err));   
                 });
 
             } else {
                 res.json({message: 'New order failed while adding order details.', success: false});
             }
-            res.json({
-                message: `Order succesffully placed with order id ${newOrder.insertId}`,
-                success: true,
-                order_id: newOrder.insertId,
-                products: products
-            });
+            if (notPurchased.length > 0) {
+                res.json({
+                    message: `Order placed with order id ${newOrder.insertId}`,
+                    success: purchasedProducts.length > 0 ? true : false,
+                    order_id: newOrder.insertId,
+                    purchased_products: purchasedProducts,
+                    not_purchased: notPurchased,
+                });
+            } else {
+                res.json({
+                    message: `Order succesffully placed with order id ${newOrder.insertId}`,
+                    success: true,
+                    order_id: newOrder.insertId,
+                    purchased_products: purchasedProducts,
+                });
+            }
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            console.log(err);
+            res.status(500).json({
+                error_message: err,
+                success: false
+            });
+        });
     } else {
         res.json({
-            message: `Your order failed. User id: ${userId} not valid.`,
-            success: false,
+            error_message: `Your order failed. User id: ${userId} not valid.`,
+            success: false
         })
     }
+    
 });
 
 // FAKE GATEWAY PAYMENT CALL
